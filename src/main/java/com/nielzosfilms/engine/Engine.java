@@ -1,5 +1,7 @@
-package com.nielzosfilms;
+package com.nielzosfilms.engine;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.GL;
@@ -14,8 +16,12 @@ import static org.lwjgl.system.MemoryStack.stackPush;
 import static org.lwjgl.system.MemoryUtil.NULL;
 
 public class Engine {
+    private static final Logger log = LogManager.getLogger(Engine.class);
 
     private long window;
+
+    private KeyHandler keyHandler = KeyHandler.getInstance();
+    private MouseHandler mouseHandler = MouseHandler.getInstance();
 
     public void run() {
         init();
@@ -40,13 +46,23 @@ public class Engine {
             throw new RuntimeException("Failed to create glfw window");
         }
 
-        glfwSetKeyCallback(window, (window, key, scancode, action, mods) -> {
-            if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
-                glfwSetWindowShouldClose(window, true);
+        glfwSetKeyCallback(window, keyHandler::keyCallback);
+        glfwSetCursorPosCallback(window, mouseHandler::mousePosCallback);
+        glfwSetMouseButtonCallback(window, mouseHandler::mouseButtonCallback);
+        glfwSetScrollCallback(window, mouseHandler::mouseScrollCallback);
+
+        keyHandler.addEventListener(new KeyEventListener() {
+            @Override
+            public void onKeyDown(Integer key) {
+                if (key == GLFW_KEY_ESCAPE) glfwSetWindowShouldClose(window, true);
+            }
+
+            @Override
+            public void onKeyUp(Integer key) {
             }
         });
 
-        try (MemoryStack stack = stackPush() ) {
+        try (MemoryStack stack = stackPush()) {
             IntBuffer pWidth = stack.mallocInt(1);
             IntBuffer pHeight = stack.mallocInt(1);
 
@@ -70,7 +86,7 @@ public class Engine {
         GL.createCapabilities();
         glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
 
-        while ( !glfwWindowShouldClose(window) ) {
+        while (!glfwWindowShouldClose(window)) {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             glfwSwapBuffers(window);
